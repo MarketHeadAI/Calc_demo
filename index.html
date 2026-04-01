@@ -22,6 +22,20 @@
       padding: 40px 16px;
     }
 
+    /* ── Цветовые темы ──
+       theme-light = ФИН  = яркий светло-зелёный (сумма ≤ 15 000)
+       по умолчанию = МОЛЛ = глубокий тёмно-зелёный (сумма > 15 000) */
+    .card {
+      --accent:      #1A6B30;
+      --accent-dark: #134f23;
+      --accent-glow: rgba(26,107,48,0.45);
+    }
+    .card.theme-light {
+      --accent:      #5CB840;
+      --accent-dark: #45932e;
+      --accent-glow: rgba(92,184,64,0.45);
+    }
+
     /* ── Карточка ── */
     .card {
       background: #fff;
@@ -81,9 +95,10 @@
     .s-fill {
       position: absolute;
       top: 0; left: 0; bottom: 0;
-      background: #3D9B58;
+      background: var(--accent);
       border-radius: 100px;
       pointer-events: none;
+      transition: background 0.3s;
     }
 
     /* Thumb визуальный */
@@ -94,11 +109,11 @@
       width: 28px;
       height: 28px;
       background: #fff;
-      border: 2.5px solid #3D9B58;
+      border: 2.5px solid var(--accent);
       border-radius: 50%;
-      box-shadow: 0 2px 10px rgba(61,155,88,0.40);
+      box-shadow: 0 2px 10px var(--accent-glow);
       pointer-events: none;
-      transition: box-shadow 0.15s;
+      transition: box-shadow 0.15s, border-color 0.3s;
     }
 
     /* Прозрачный нативный range поверх — управление */
@@ -119,7 +134,7 @@
 
     /* Hover: thumb свечение */
     .slider-wrap:hover .s-thumb {
-      box-shadow: 0 2px 18px rgba(61,155,88,0.55);
+      box-shadow: 0 2px 18px var(--accent-glow);
     }
 
     /* Подписи мин/макс */
@@ -137,7 +152,7 @@
       display: block;
       width: 100%;
       padding: 19px;
-      background: #3D9B58;
+      background: var(--accent);
       color: #fff;
       border: none;
       border-radius: 12px;
@@ -147,12 +162,12 @@
       text-transform: uppercase;
       letter-spacing: 0.6px;
       cursor: pointer;
-      transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
-      box-shadow: 0 4px 16px rgba(61,155,88,0.38);
+      transition: background 0.3s, transform 0.1s, box-shadow 0.3s;
+      box-shadow: 0 4px 16px var(--accent-glow);
     }
     .btn-cta:hover {
-      background: #2d7a44;
-      box-shadow: 0 6px 22px rgba(61,155,88,0.50);
+      background: var(--accent-dark);
+      box-shadow: 0 6px 22px var(--accent-glow);
     }
     .btn-cta:active { transform: scale(0.99); }
 
@@ -171,7 +186,7 @@
 </head>
 <body>
 
-<div class="card">
+<div class="card" id="card">
 
   <h1 class="card-title">Калькулятор займа</h1>
 
@@ -188,7 +203,7 @@
     <div class="s-thumb" id="sum-thumb"></div>
     <input class="s-input" type="range"
            id="sum-range"
-           min="2000" max="100000" value="65000" step="1000"
+           min="0" max="79" value="44" step="1"
            oninput="onSum(+this.value)">
   </div>
 
@@ -215,47 +230,134 @@
   </div>
 
   <div class="slider-labels">
-    <span>7 дней</span>
-    <span>53 недели</span>
+    <span id="term-label-min">45 недель</span>
+    <span id="term-label-max">53 недели</span>
   </div>
 
   <!-- ── КНОПКА ── -->
-  <button class="btn-cta">Получить деньги</button>
+  <button class="btn-cta" id="btn-cta">Получить 65 000 ₽</button>
 
 </div>
 
 <script>
-  /* Дискретные значения срока */
+  /*
+   * ПРАВИЛА:
+   *  Сумма ≤ 15 000  → срок только дни   (индексы 0–3)
+   *  Сумма > 15 000  → срок только недели (индексы 4–10)
+   *  После 15 000 следующее значение сразу 35 000 (промежутка нет).
+   *  Если двигают срок в «дни» при сумме > 15 000 → сумма снапится к 15 000.
+   */
+
+  /* Массив допустимых сумм: 2 000–15 000, затем сразу 35 000–100 000 */
+  const SUM_VALUES = [];
+  for (let v = 2000;  v <= 15000;  v += 1000) SUM_VALUES.push(v); /* индексы 0–13  */
+  for (let v = 35000; v <= 100000; v += 1000) SUM_VALUES.push(v); /* индексы 14–79 */
+
+  const LAST_TAB1_IDX  = 13;  /* индекс 15 000 */
+  const FIRST_TAB2_IDX = 14;  /* индекс 35 000 */
+  const THRESHOLD      = 15000;
+  const IDX_LAST_DAY   = 3;   /* «30 дней»     */
+  const IDX_FIRST_WEEK = 4;   /* «45 недель»   */
+
   const TERMS = [
     '7 дней', '14 дней', '21 день', '30 дней',
     '45 недель', '46 недель', '47 недель', '48 недель',
     '49 недель', '50 недель', '53 недели'
   ];
 
-  /* ── Обновить слайдер суммы ── */
-  function onSum(v) {
-    const pct = (v - 2000) / (100000 - 2000) * 100;
-    document.getElementById('sum-val').textContent =
-      v.toLocaleString('ru-RU') + ' ₽';
-    setSlider('sum', pct);
+  let sumIdx  = 44;                 /* стартовый индекс → 65 000 */
+  let sumVal  = SUM_VALUES[sumIdx];
+  let termIdx = IDX_FIRST_WEEK;
+
+  /* ── Тема: ФИН (светло-зелёный) ↔ МОЛЛ (тёмно-зелёный) ── */
+  function applyTheme(tab) {
+    document.getElementById('card').classList.toggle('theme-light', tab === 1);
   }
 
-  /* ── Обновить слайдер срока ── */
-  function onTerm(idx) {
-    const pct = idx / (TERMS.length - 1) * 100;
+  /* ── Отрисовка суммы ── */
+  function renderSum() {
+    sumVal = SUM_VALUES[sumIdx];
+    applyTheme(sumVal <= THRESHOLD ? 1 : 2);
+    const fmt = sumVal.toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('sum-val').textContent = fmt;
+    document.getElementById('btn-cta').textContent = 'Получить ' + fmt;
+    setSlider('sum', sumIdx / (SUM_VALUES.length - 1) * 100);
+  }
+
+  /* ── Обработчик слайдера суммы ── */
+  function onSum(idx) {
+    sumIdx = idx;
+    const newGroup = SUM_VALUES[idx] <= THRESHOLD ? 'days' : 'weeks';
+    const curGroup = termIdx <= IDX_LAST_DAY ? 'days' : 'weeks';
+
+    if (newGroup !== curGroup) {
+      if (newGroup === 'days') {
+        setTerm(IDX_LAST_DAY);
+        updateTermRange(1);
+      } else {
+        setTerm(IDX_FIRST_WEEK);
+        updateTermRange(2);
+      }
+    }
+
+    renderSum();
+  }
+
+  /* ── Ограничение диапазона слайдера срока + подписи ── */
+  function updateTermRange(tab) {
+    const r = document.getElementById('term-range');
+    if (tab === 1) {
+      r.min = 0; r.max = IDX_LAST_DAY;
+      if (+r.value > IDX_LAST_DAY) r.value = IDX_LAST_DAY;
+      document.getElementById('term-label-min').textContent = TERMS[0];               /* 7 дней  */
+      document.getElementById('term-label-max').textContent = TERMS[IDX_LAST_DAY];    /* 30 дней */
+    } else {
+      r.min = IDX_FIRST_WEEK; r.max = TERMS.length - 1;
+      if (+r.value < IDX_FIRST_WEEK) r.value = IDX_FIRST_WEEK;
+      document.getElementById('term-label-min').textContent = TERMS[IDX_FIRST_WEEK];  /* 45 недель */
+      document.getElementById('term-label-max').textContent = TERMS[TERMS.length - 1];/* 53 недели */
+    }
+  }
+
+  /* ── Отрисовка срока ── */
+  function setTerm(idx) {
+    termIdx = idx;
+    document.getElementById('term-range').value = idx;
     document.getElementById('term-val').textContent = TERMS[idx];
+
+    let pct;
+    if (idx <= IDX_LAST_DAY) {
+      pct = idx / IDX_LAST_DAY * 100;
+    } else {
+      pct = (idx - IDX_FIRST_WEEK) / (TERMS.length - 1 - IDX_FIRST_WEEK) * 100;
+    }
     setSlider('term', pct);
   }
 
-  /* ── Установить положение fill + thumb ── */
-  function setSlider(id, pct) {
-    document.getElementById(id + '-fill').style.width  = pct + '%';
-    document.getElementById(id + '-thumb').style.left  = pct + '%';
+  /* ── Обработчик слайдера срока ── */
+  function onTerm(idx) {
+    /* Дни при сумме > 15 000 → снапим сумму к 15 000 */
+    if (idx <= IDX_LAST_DAY && sumVal > THRESHOLD) {
+      sumIdx = LAST_TAB1_IDX;
+      document.getElementById('sum-range').value = LAST_TAB1_IDX;
+      updateTermRange(1);
+      renderSum();
+    }
+    setTerm(idx);
   }
 
+  /* ── Позиция fill + thumb ── */
+  function setSlider(id, pct) {
+    document.getElementById(id + '-fill').style.width = pct + '%';
+    document.getElementById(id + '-thumb').style.left = pct + '%';
+  }
+
+  window.addEventListener('resize', () => { renderSum(); setTerm(termIdx); });
+
   /* ── Инициализация ── */
-  onSum(65000);
-  onTerm(3);        /* 30 дней — стартовое значение */
+  updateTermRange(2);       /* старт с группы «недели» */
+  renderSum();
+  setTerm(IDX_FIRST_WEEK);  /* 45 недель по умолчанию  */
 </script>
 
 </body>
