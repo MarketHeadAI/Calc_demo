@@ -21,6 +21,26 @@
       padding: 40px 16px;
     }
 
+    /* ─────────────────────────────────────
+       ЦВЕТОВЫЕ ТЕМЫ
+       --accent      : основной акцент (слайдер, кнопка, подчёркивание)
+       --accent-dark : hover-состояние кнопки
+       --accent-glow : тень thumb
+       tab1 (до 15 000) = ФИН  = яркий светло-зелёный
+       tab2 (до 100 000) = МОЛЛ = глубокий тёмно-зелёный
+    ───────────────────────────────────── */
+    .card {
+      --accent:      #1A6B30;
+      --accent-dark: #134f23;
+      --accent-glow: rgba(26,107,48,0.45);
+      transition: --accent 0.3s;
+    }
+    .card.theme-light {
+      --accent:      #5CB840;
+      --accent-dark: #45932e;
+      --accent-glow: rgba(92,184,64,0.45);
+    }
+
     /* ── Карточка ── */
     .card {
       background: #fff;
@@ -48,21 +68,18 @@
       padding: 16px 12px 14px;
       cursor: pointer;
       position: relative;
-      transition: background 0.15s;
       user-select: none;
     }
-    .tab:first-child {
-      border-right: 1.5px solid #e9ecef;
-    }
+    .tab:first-child { border-right: 1.5px solid #e9ecef; }
 
-    /* Неактивный таб */
-    .tab .tab-icon { color: #adb5bd; transition: color 0.15s; }
+    /* Иконка и текст — неактивный */
+    .tab .tab-icon { color: #adb5bd; transition: color 0.25s; }
     .tab .tab-text {
       font-size: 14px;
       font-weight: 600;
       color: #adb5bd;
-      transition: color 0.15s;
       white-space: nowrap;
+      transition: color 0.25s;
     }
 
     /* Активный таб */
@@ -74,8 +91,9 @@
       bottom: -1.5px;
       left: 0; right: 0;
       height: 3px;
-      background: #3D9B58;
+      background: var(--accent);
       border-radius: 3px 3px 0 0;
+      transition: background 0.3s;
     }
 
     /* ══════════════════════════════
@@ -96,12 +114,10 @@
       border-radius: 10px;
       padding: 12px 16px 0;
       position: relative;
-      transition: border-color 0.15s;
       overflow: visible;
+      transition: border-color 0.25s;
     }
-    .field-box:focus-within {
-      border-color: #3D9B58;
-    }
+    .field-box:focus-within { border-color: var(--accent); }
 
     .field-box-top {
       display: flex;
@@ -136,12 +152,11 @@
     /* ── Слайдер внутри поля ── */
     .inner-slider {
       position: relative;
-      height: 20px;           /* пространство для thumb */
-      margin: 0 -16px;        /* выходит за padding поля */
-      margin-bottom: -1.5px;  /* нависает на border поля снизу */
+      height: 20px;
+      margin: 0 -16px;
+      margin-bottom: -1.5px;
     }
 
-    /* Трек */
     .is-rail {
       position: absolute;
       bottom: 8px;
@@ -153,29 +168,28 @@
     .is-fill {
       position: absolute;
       top: 0; left: 0; bottom: 0;
-      background: #3D9B58;
+      background: var(--accent);
       border-radius: 100px;
+      transition: background 0.3s, width 0.05s linear;
     }
 
-    /* Thumb визуальный */
     .is-thumb {
       position: absolute;
       bottom: 0;
       transform: translateX(-50%);
       width: 26px;
       height: 26px;
-      background: #3D9B58;
+      background: var(--accent);
       border-radius: 50%;
-      box-shadow: 0 2px 8px rgba(61,155,88,0.45);
+      box-shadow: 0 2px 8px var(--accent-glow);
       pointer-events: none;
-      transition: box-shadow 0.15s, transform 0.15s;
+      transition: background 0.3s, box-shadow 0.3s, transform 0.15s;
     }
     .inner-slider:hover .is-thumb {
-      box-shadow: 0 3px 14px rgba(61,155,88,0.60);
+      box-shadow: 0 3px 14px var(--accent-glow);
       transform: translateX(-50%) scale(1.08);
     }
 
-    /* Нативный input поверх */
     .is-input {
       position: absolute;
       bottom: 0;
@@ -199,7 +213,7 @@
       display: block;
       width: 100%;
       padding: 19px 16px;
-      background: #3D9B58;
+      background: var(--accent);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -209,14 +223,11 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       cursor: pointer;
-      transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
-      box-shadow: 0 4px 16px rgba(61,155,88,0.38);
+      transition: background 0.3s, box-shadow 0.3s, transform 0.1s;
+      box-shadow: 0 4px 16px var(--accent-glow);
       margin-top: 4px;
     }
-    .btn-cta:hover {
-      background: #2d7a44;
-      box-shadow: 0 6px 22px rgba(61,155,88,0.50);
-    }
+    .btn-cta:hover { filter: brightness(0.88); }
     .btn-cta:active { transform: scale(0.99); }
 
     /* ── Адаптив ── */
@@ -229,12 +240,12 @@
 </head>
 <body>
 
-<div class="card">
+<div class="card" id="card">
 
   <!-- ТАБЫ -->
   <div class="tabs">
-    <div class="tab" id="tab1" onclick="switchTab(1)">
-      <!-- иконка: монета с рублём -->
+    <div class="tab" id="tab1" onclick="switchTab(1, true)">
+      <!-- Монета с рублём — до 15 000 -->
       <svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/>
@@ -242,10 +253,10 @@
         <path d="M9 7h3.5a2.5 2.5 0 0 1 0 5H9"/>
         <line x1="7.5" y1="14" x2="13.5" y2="14"/>
       </svg>
-      <span class="tab-text">До 30 000 ₽</span>
+      <span class="tab-text">До 15 000 ₽</span>
     </div>
-    <div class="tab active" id="tab2" onclick="switchTab(2)">
-      <!-- иконка: кредитная карта -->
+    <div class="tab active" id="tab2" onclick="switchTab(2, true)">
+      <!-- Кредитная карта — до 100 000 -->
       <svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="1" y="4" width="22" height="16" rx="2"/>
@@ -298,13 +309,20 @@
 </div>
 
 <script>
-  /* ── Конфигурация по табам ── */
-  const TAB_CFG = {
-    1: { min: 2000,  max: 30000,  start: 15000 },
-    2: { min: 2000,  max: 100000, start: 65000 }
-  };
+  /*
+   * ПРАВИЛА ВЗАИМОСВЯЗИ:
+   *  Сумма ≤ 15 000  → таб 1 (светло-зелёный), срок только дни  (индексы 0–3)
+   *  Сумма > 15 000  → таб 2 (тёмно-зелёный),  срок только недели (индексы 4–10)
+   *
+   *  Слайдер суммы ВСЕГДА 2 000–100 000 (max никогда не меняется).
+   *  При переходе суммы через порог → срок переключается автоматически.
+   *  Если двигают срок в «дни» при сумме > 15 000 → сумма снапится к 15 000.
+   */
 
-  /* ── Дискретные сроки ── */
+  const THRESHOLD = 15000;          /* граница переключения              */
+  const IDX_LAST_DAY   = 3;         /* индекс «30 дней»                  */
+  const IDX_FIRST_WEEK = 4;         /* индекс «45 недель»                */
+
   const TERMS = [
     { label: '7 дней',    days: 7   },
     { label: '14 дней',   days: 14  },
@@ -319,71 +337,140 @@
     { label: '53 недели', days: 371 },
   ];
 
-  let activeTab = 2;
+  let activeTab = 2;   /* текущий таб (1 или 2)  */
   let sumVal    = 65000;
-  let termIdx   = 3;
+  let termIdx   = IDX_FIRST_WEEK;   /* 45 недель при старте  */
 
-  /* ── Переключение таба ── */
-  function switchTab(n) {
+  /* ── Тема ── */
+  function applyTheme(tab) {
+    document.getElementById('card').classList.toggle('theme-light', tab === 1);
+  }
+
+  /* ── Визуальное переключение табов (без изменения слайдеров) ── */
+  function setActiveTab(n) {
     activeTab = n;
     document.getElementById('tab1').classList.toggle('active', n === 1);
     document.getElementById('tab2').classList.toggle('active', n === 2);
-    const cfg = TAB_CFG[n];
-    const range = document.getElementById('sum-range');
-    range.min   = cfg.min;
-    range.max   = cfg.max;
-    const newVal = Math.min(Math.max(sumVal, cfg.min), cfg.max);
-    range.value = newVal;
-    onSum(newVal);
+    applyTheme(n);
   }
 
-  /* ── Сумма ── */
-  function onSum(v) {
+  /* ── Клик по табу вручную ── */
+  function switchTab(n) {
+    if (activeTab === n) return;
+    setActiveTab(n);
+
+    if (n === 1) {
+      /* Переключились в «до 15 000»: снапим сумму и срок */
+      const newSum = Math.min(sumVal, THRESHOLD);
+      document.getElementById('sum-range').value = newSum;
+      renderSum(newSum);
+      if (termIdx > IDX_LAST_DAY) setTerm(IDX_LAST_DAY);
+      updateTermRange(1);
+    } else {
+      /* Переключились в «до 100 000»: срок → недели, если были дни */
+      if (termIdx <= IDX_LAST_DAY) setTerm(IDX_FIRST_WEEK);
+      updateTermRange(2);
+    }
+  }
+
+  /* ── Ограничение диапазона слайдера срока ── */
+  function updateTermRange(tab) {
+    const r = document.getElementById('term-range');
+    if (tab === 1) {
+      r.min = 0; r.max = IDX_LAST_DAY;
+      if (+r.value > IDX_LAST_DAY) r.value = IDX_LAST_DAY;
+    } else {
+      r.min = IDX_FIRST_WEEK; r.max = TERMS.length - 1;
+      if (+r.value < IDX_FIRST_WEEK) r.value = IDX_FIRST_WEEK;
+    }
+  }
+
+  /* ── Отрисовка суммы (без побочных эффектов) ── */
+  function renderSum(v) {
     sumVal = v;
-    const cfg = TAB_CFG[activeTab];
-    const pct = (v - cfg.min) / (cfg.max - cfg.min) * 100;
     const fmt = v.toLocaleString('ru-RU') + ' ₽';
     document.getElementById('sum-val').textContent = fmt;
     document.getElementById('btn-cta').textContent = 'Получить ' + fmt;
-    setSlider('sum', pct);
+    /* Слайдер суммы ВСЕГДА в диапазоне 2 000–100 000 */
+    const pct = (v - 2000) / (100000 - 2000) * 100;
+    setSliderPos('sum', pct);
   }
 
-  /* ── Срок ── */
-  function onTerm(idx) {
+  /* ── Обработчик слайдера суммы ── */
+  function onSum(v) {
+    const wasTab = activeTab;
+    const newTab = v <= THRESHOLD ? 1 : 2;
+
+    if (newTab !== wasTab) {
+      setActiveTab(newTab);
+      /* Автопереключение срока при смене таба */
+      if (newTab === 1 && termIdx > IDX_LAST_DAY) {
+        setTerm(IDX_LAST_DAY);
+      } else if (newTab === 2 && termIdx <= IDX_LAST_DAY) {
+        setTerm(IDX_FIRST_WEEK);
+      }
+      updateTermRange(newTab);
+    }
+
+    renderSum(v);
+  }
+
+  /* ── Отрисовка и запись срока ── */
+  function setTerm(idx) {
     termIdx = idx;
-    const t   = TERMS[idx];
-    const pct = idx / (TERMS.length - 1) * 100;
+    const r = document.getElementById('term-range');
+    r.value = idx;
+
+    const t = TERMS[idx];
     document.getElementById('term-val').textContent = t.label;
-    // Дата погашения
     const end = new Date();
     end.setDate(end.getDate() + t.days);
     document.getElementById('term-date').textContent =
-      'До ' + end.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
-    setSlider('term', pct);
+      'До ' + end.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    /* Fill: позиция внутри текущей группы */
+    let pct;
+    if (idx <= IDX_LAST_DAY) {
+      pct = idx / IDX_LAST_DAY * 100;                            /* 0–3 → 0–100% */
+    } else {
+      pct = (idx - IDX_FIRST_WEEK) / (TERMS.length - 1 - IDX_FIRST_WEEK) * 100; /* 4–10 → 0–100% */
+    }
+    setSliderPos('term', pct);
   }
 
-  /* ── Позиция fill + thumb ── */
-  function setSlider(id, pct) {
+  /* ── Обработчик слайдера срока ── */
+  function onTerm(idx) {
+    const isDaysTerm = idx <= IDX_LAST_DAY;
+
+    /* Если выбраны «дни», а сумма > порога — снапим сумму к порогу */
+    if (isDaysTerm && sumVal > THRESHOLD) {
+      document.getElementById('sum-range').value = THRESHOLD;
+      setActiveTab(1);
+      updateTermRange(1);
+      renderSum(THRESHOLD);
+    }
+
+    setTerm(idx);
+  }
+
+  /* ── Позиционирование fill + thumb ── */
+  function setSliderPos(id, pct) {
     document.getElementById(id + '-fill').style.width = pct + '%';
-    // thumb позиционируем относительно ширины рельса (с учётом отступов 16px с каждой стороны)
     const wrap  = document.getElementById(id + '-wrap');
-    const rail  = wrap.querySelector('.is-rail');
-    const thumb = document.getElementById(id + '-thumb');
-    const railW = rail.offsetWidth;
-    thumb.style.left = (16 + railW * pct / 100) + 'px';
+    const railW = wrap.querySelector('.is-rail').offsetWidth;
+    document.getElementById(id + '-thumb').style.left = (16 + railW * pct / 100) + 'px';
   }
 
-  /* ── Пересчёт позиций при ресайзе ── */
-  function recalc() {
-    const cfg = TAB_CFG[activeTab];
-    setSlider('sum',  (sumVal - cfg.min) / (cfg.max - cfg.min) * 100);
-    setSlider('term', termIdx / (TERMS.length - 1) * 100);
-  }
-  window.addEventListener('resize', recalc);
+  /* ── Ресайз ── */
+  window.addEventListener('resize', () => {
+    renderSum(sumVal);
+    setTerm(termIdx);
+  });
 
   /* ── Инициализация ── */
-  onSum(65000);
-  onTerm(3);
+  updateTermRange(2);          /* стартуем с таба 2 → недели */
+  renderSum(65000);
+  setTerm(IDX_FIRST_WEEK);     /* 45 недель по умолчанию     */
 </script>
 
 </body>
