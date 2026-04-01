@@ -279,7 +279,7 @@
         <div class="is-rail"><div class="is-fill" id="sum-fill"></div></div>
         <div class="is-thumb" id="sum-thumb"></div>
         <input class="is-input" type="range"
-               id="sum-range" min="2000" max="100000" value="65000" step="1000"
+               id="sum-range" min="0" max="79" value="44" step="1"
                oninput="onSum(+this.value)">
       </div>
     </div>
@@ -310,18 +310,27 @@
 
 <script>
   /*
-   * ПРАВИЛА ВЗАИМОСВЯЗИ:
+   * ПРАВИЛА:
    *  Сумма ≤ 15 000  → таб 1 (светло-зелёный), срок только дни  (индексы 0–3)
    *  Сумма > 15 000  → таб 2 (тёмно-зелёный),  срок только недели (индексы 4–10)
    *
-   *  Слайдер суммы ВСЕГДА 2 000–100 000 (max никогда не меняется).
-   *  При переходе суммы через порог → срок переключается автоматически.
-   *  Если двигают срок в «дни» при сумме > 15 000 → сумма снапится к 15 000.
+   *  Слайдер суммы работает по индексам 0–79, отображённым на массив SUM_VALUES.
+   *  Массив пропускает диапазон 15 001–34 999: индекс 13 = 15 000, индекс 14 = 35 000.
+   *  Никакого снапа нет — слайдер физически не может попасть в запрещённую зону.
    */
 
-  const THRESHOLD = 15000;          /* граница переключения              */
-  const IDX_LAST_DAY   = 3;         /* индекс «30 дней»                  */
-  const IDX_FIRST_WEEK = 4;         /* индекс «45 недель»                */
+  /* ── Массив допустимых сумм ── */
+  const SUM_VALUES = [];
+  for (let v = 2000;  v <= 15000;  v += 1000) SUM_VALUES.push(v);  /* 0–13  */
+  for (let v = 35000; v <= 100000; v += 1000) SUM_VALUES.push(v);  /* 14–79 */
+  /* SUM_VALUES.length = 80, max index = 79 */
+
+  const LAST_TAB1_IDX  = 13;   /* индекс 15 000 — последний в группе «дни»   */
+  const FIRST_TAB2_IDX = 14;   /* индекс 35 000 — первый в группе «недели»   */
+
+  const THRESHOLD      = 15000;
+  const IDX_LAST_DAY   = 3;    /* индекс «30 дней»  */
+  const IDX_FIRST_WEEK = 4;    /* индекс «45 недель» */
 
   const TERMS = [
     { label: '7 дней',    days: 7   },
@@ -337,16 +346,17 @@
     { label: '53 недели', days: 371 },
   ];
 
-  let activeTab = 2;   /* текущий таб (1 или 2)  */
-  let sumVal    = 65000;
-  let termIdx   = IDX_FIRST_WEEK;   /* 45 недель при старте  */
+  let activeTab = 2;
+  let sumIdx    = 44;                    /* индекс 65 000 = 14 + (65000-35000)/1000 */
+  let sumVal    = SUM_VALUES[44];        /* 65 000                                  */
+  let termIdx   = IDX_FIRST_WEEK;
 
   /* ── Тема ── */
   function applyTheme(tab) {
     document.getElementById('card').classList.toggle('theme-light', tab === 1);
   }
 
-  /* ── Визуальное переключение табов (без изменения слайдеров) ── */
+  /* ── Переключение визуала табов ── */
   function setActiveTab(n) {
     activeTab = n;
     document.getElementById('tab1').classList.toggle('active', n === 1);
@@ -354,23 +364,22 @@
     applyTheme(n);
   }
 
-  /* ── Клик по табу вручную ── */
+  /* ── Ручной клик по табу ── */
   function switchTab(n) {
     if (activeTab === n) return;
     setActiveTab(n);
-
     if (n === 1) {
-      /* Переключились в «до 15 000»: снапим сумму и срок */
-      const newSum = Math.min(sumVal, THRESHOLD);
-      document.getElementById('sum-range').value = newSum;
-      renderSum(newSum);
+      if (sumIdx > LAST_TAB1_IDX) {
+        sumIdx = LAST_TAB1_IDX;
+        document.getElementById('sum-range').value = LAST_TAB1_IDX;
+      }
       if (termIdx > IDX_LAST_DAY) setTerm(IDX_LAST_DAY);
       updateTermRange(1);
     } else {
-      /* Переключились в «до 100 000»: срок → недели, если были дни */
       if (termIdx <= IDX_LAST_DAY) setTerm(IDX_FIRST_WEEK);
       updateTermRange(2);
     }
+    renderSum();
   }
 
   /* ── Ограничение диапазона слайдера срока ── */
@@ -385,41 +394,35 @@
     }
   }
 
-  /* ── Отрисовка суммы (без побочных эффектов) ── */
-  function renderSum(v) {
-    sumVal = v;
-    const fmt = v.toLocaleString('ru-RU') + ' ₽';
+  /* ── Отрисовка суммы ── */
+  function renderSum() {
+    sumVal = SUM_VALUES[sumIdx];
+    const fmt = sumVal.toLocaleString('ru-RU') + ' ₽';
     document.getElementById('sum-val').textContent = fmt;
     document.getElementById('btn-cta').textContent = 'Получить ' + fmt;
-    /* Слайдер суммы ВСЕГДА в диапазоне 2 000–100 000 */
-    const pct = (v - 2000) / (100000 - 2000) * 100;
+    const pct = sumIdx / (SUM_VALUES.length - 1) * 100;
     setSliderPos('sum', pct);
   }
 
   /* ── Обработчик слайдера суммы ── */
-  function onSum(v) {
-    const wasTab = activeTab;
-    const newTab = v <= THRESHOLD ? 1 : 2;
+  function onSum(idx) {
+    sumIdx = idx;
+    const newTab = SUM_VALUES[idx] <= THRESHOLD ? 1 : 2;
 
-    if (newTab !== wasTab) {
+    if (newTab !== activeTab) {
       setActiveTab(newTab);
-      /* Автопереключение срока при смене таба */
-      if (newTab === 1 && termIdx > IDX_LAST_DAY) {
-        setTerm(IDX_LAST_DAY);
-      } else if (newTab === 2 && termIdx <= IDX_LAST_DAY) {
-        setTerm(IDX_FIRST_WEEK);
-      }
+      if (newTab === 1 && termIdx > IDX_LAST_DAY)   setTerm(IDX_LAST_DAY);
+      if (newTab === 2 && termIdx <= IDX_LAST_DAY)  setTerm(IDX_FIRST_WEEK);
       updateTermRange(newTab);
     }
 
-    renderSum(v);
+    renderSum();
   }
 
   /* ── Отрисовка и запись срока ── */
   function setTerm(idx) {
     termIdx = idx;
-    const r = document.getElementById('term-range');
-    r.value = idx;
+    document.getElementById('term-range').value = idx;
 
     const t = TERMS[idx];
     document.getElementById('term-val').textContent = t.label;
@@ -428,49 +431,42 @@
     document.getElementById('term-date').textContent =
       'До ' + end.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    /* Fill: позиция внутри текущей группы */
     let pct;
     if (idx <= IDX_LAST_DAY) {
-      pct = idx / IDX_LAST_DAY * 100;                            /* 0–3 → 0–100% */
+      pct = idx / IDX_LAST_DAY * 100;
     } else {
-      pct = (idx - IDX_FIRST_WEEK) / (TERMS.length - 1 - IDX_FIRST_WEEK) * 100; /* 4–10 → 0–100% */
+      pct = (idx - IDX_FIRST_WEEK) / (TERMS.length - 1 - IDX_FIRST_WEEK) * 100;
     }
     setSliderPos('term', pct);
   }
 
   /* ── Обработчик слайдера срока ── */
   function onTerm(idx) {
-    const isDaysTerm = idx <= IDX_LAST_DAY;
-
-    /* Если выбраны «дни», а сумма > порога — снапим сумму к порогу */
-    if (isDaysTerm && sumVal > THRESHOLD) {
-      document.getElementById('sum-range').value = THRESHOLD;
+    /* Если выбраны «дни» при сумме > порога — сумма снапится к 15 000 */
+    if (idx <= IDX_LAST_DAY && sumVal > THRESHOLD) {
+      sumIdx = LAST_TAB1_IDX;
+      document.getElementById('sum-range').value = LAST_TAB1_IDX;
       setActiveTab(1);
       updateTermRange(1);
-      renderSum(THRESHOLD);
+      renderSum();
     }
-
     setTerm(idx);
   }
 
-  /* ── Позиционирование fill + thumb ── */
+  /* ── Позиция fill + thumb ── */
   function setSliderPos(id, pct) {
     document.getElementById(id + '-fill').style.width = pct + '%';
-    const wrap  = document.getElementById(id + '-wrap');
-    const railW = wrap.querySelector('.is-rail').offsetWidth;
+    const railW = document.getElementById(id + '-wrap').querySelector('.is-rail').offsetWidth;
     document.getElementById(id + '-thumb').style.left = (16 + railW * pct / 100) + 'px';
   }
 
   /* ── Ресайз ── */
-  window.addEventListener('resize', () => {
-    renderSum(sumVal);
-    setTerm(termIdx);
-  });
+  window.addEventListener('resize', () => { renderSum(); setTerm(termIdx); });
 
   /* ── Инициализация ── */
-  updateTermRange(2);          /* стартуем с таба 2 → недели */
-  renderSum(65000);
-  setTerm(IDX_FIRST_WEEK);     /* 45 недель по умолчанию     */
+  updateTermRange(2);
+  renderSum();
+  setTerm(IDX_FIRST_WEEK);
 </script>
 
 </body>
